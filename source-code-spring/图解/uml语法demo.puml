@@ -1,0 +1,59 @@
+@startuml
+autonumber
+弹C -> 交易订单中心: getOrderDetailInfo()
+note left: 交易订单详情页面
+交易订单中心 -> 金融订单core: getUserTaskEntry()
+金融订单core --> 交易订单中心: 返回UserTaskEntry列表（多数情况为一个）
+交易订单中心 --> 弹C: return getOrderDetailInfo
+note right:包括UserTaskEntry的交易订单详情\n此时为保兑协议相关的入口URL
+弹C -> 弹C: 渲染订单详情
+note left: 根据金融订单返\n回的UserTaskEntry\n渲染金融订单操作的按钮,\n如去签署保兑协议
+弹C -> 弹C: 进入《去签署保兑协议》页面
+弹C -> 金融订单浙商: 预览保兑协议：previewBaoduiProtocol()
+金融订单浙商 -> 开放平台浙商: getBaoduiProtocol()
+note left: 通过zheshang包自己的\nAdapter获取
+开放平台浙商 --> 金融订单浙商: 保兑协议
+金融订单浙商 --> 弹C: 保兑协议
+弹C -> 金融订单浙商: 确认签署保兑协议（金融订单浙商的保兑协议签署页面）
+
+金融订单浙商 -> 金融订单core: finishTask(String taskServiceBeanId)
+note left: command
+alt 完结任务
+金融订单core -> 金融订单core: TaskServiceBean.finishTask();
+金融订单core -> 金融订单core: 发送保兑协议已签状态机事件，eventBus.submit();
+金融订单core -> 金融订单core: 驱动状态机执行相关action
+金融订单core -> 金融订单core: taskLauncher.startTask()，启动人脸识别任务\n任务为初始状态000，对应的URL为继续认证。
+note left: 在现在已有的体系\n下启动下一个task
+end
+金融订单core --> 金融订单浙商: 保兑协议签成功
+金融订单浙商 -->弹C: 保兑协议签成功
+弹C -> 弹C: 启动端上人脸识别
+note left: 端上直接启动浙商SDK人脸识别
+group 人脸识别完成
+弹C -> 金融订单浙商: 上传人脸照片,uploadFacePhoto()
+金融订单浙商 -> 金融订单core: finishTask(String taskServiceBeanId)
+note right: taskServiceBeanId为人脸识别task
+group 完结人脸识别
+金融订单core -> 金融订单浙商: TaskServiceBean.finishTask();
+金融订单浙商 -> 开放平台浙商: uploadFacePhoto()
+note left: 同步照片到浙商
+开放平台浙商 --> 金融订单浙商: 返回同步的照片URL
+金融订单浙商 --> 金融订单core: task事件通知
+金融订单core -> 金融订单core: 处理taskEvent:TaskEventHandler.doEvent
+金融订单core -> 金融订单core: 发送人脸识别完成状态机事件，eventBus.submit();
+金融订单core -> 金融订单core: 驱动状态机执行相关action
+end
+end
+group 人脸识别未完成
+弹C -> 交易订单中心: getOrderDetailInfo()
+note left: 交易订单详情页面
+交易订单中心 -> 金融订单core: getUserTaskEntry()
+金融订单core --> 交易订单中心: 返回UserTaskEntry列表（多数情况为一个）
+交易订单中心 --> 弹C: return getOrderDetailInfo
+note right:包括UserTaskEntry的交易订单详情\n此时为保兑协议相关的入口URL
+弹C -> 弹C: 渲染订单详情
+note left: 继续完成人脸识别，\n如果人脸识别过期，\n则走异常流
+弹C -> 弹C: 启动端上人脸识别，同上面第21步一样
+note left: 后续流程同《人脸识别完成》
+end
+@enduml

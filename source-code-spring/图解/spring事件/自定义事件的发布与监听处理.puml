@@ -1,0 +1,46 @@
+@startuml
+actor test
+test -> ApplicationContext: publishEvent(myEvent)
+ApplicationContext -> ApplicationContext: publishEvent(event, null)
+ApplicationContext -> PayloadApplicationEvent: new PayloadApplicationEvent<>(this, event)
+note left
+ApplicationEvent的子类，
+多了个payload，保存用户自定义事件
+end note
+ApplicationContext -> ApplicationContext:getApplicationEventMulticaster()
+ApplicationContext -> SimpleApplicationEventMulticaster:multicastEvent(applicationEvent, eventType)
+note left
+这里的eventType是真正的用户自定义的类型
+通过解析PayloadApplicationEvent得到的
+end note
+SimpleApplicationEventMulticaster -> SimpleApplicationEventMulticaster:getApplicationListeners(event, type)
+note left: 获取PayloadApplicationEvent和用户自定义事件类型
+SimpleApplicationEventMulticaster -> SimpleApplicationEventMulticaster:invokeListener(listener, event)
+note left
+循环遍历有的上步得到的listener
+这里的event还是PayloadApplicationEvent
+end note
+SimpleApplicationEventMulticaster -> SimpleApplicationEventMulticaster:doInvokeListener(listener, event)
+SimpleApplicationEventMulticaster -> ApplicationListenerMethodAdapter:onApplicationEvent(event)
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:processEvent(event)
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:resolveArguments(event)
+note left
+从PayloadApplicationEvent解析出参数
+((PayloadApplicationEvent) event).getPayload()
+end note
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:shouldHandle(event, args)
+note left
+解析event中的condition
+判断是否该发布该事件
+end note
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:doInvoke(args)
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:getTargetBean()
+note left:从spring容器中取出@EventListener注解所在的bean
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:this.method.invoke(bean, args)
+note left:反射调用
+ApplicationListenerMethodAdapter -> ApplicationListenerMethodAdapter:handleResult(result)
+note left
+有返回值，还会再次发布事件的
+所以，如果将监听到的事件再次返回，会java.lang.StackOverflowError
+end note
+@enduml

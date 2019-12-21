@@ -1,0 +1,57 @@
+@startuml
+actor SourceCodeSpringApplicationMain
+SourceCodeSpringApplicationMain -> SpringApplication: run(SourceCodeSpringApplication.class, args)
+SpringApplication -> SpringApplication: run(new Class<?>[] { primarySource }, args)
+SpringApplication -> SpringApplication: new SpringApplication(primarySources).run(args)
+SpringApplication -> SpringApplication: run()
+SpringApplication -> SpringApplication: createApplicationContext()
+SpringApplication -> BeanUtils:instantiateClass(AnnotationConfigApplicationContext)
+BeanUtils -> AnnotationConfigApplicationContext:new AnnotationConfigApplicationContext()
+AnnotationConfigApplicationContext -> AnnotatedBeanDefinitionReader: new AnnotatedBeanDefinitionReader(this)
+AnnotatedBeanDefinitionReader -> AnnotatedBeanDefinitionReader: this(registry, getOrCreateEnvironment(registry))
+AnnotatedBeanDefinitionReader -> AnnotationConfigUtils: registerAnnotationConfigProcessors(this.registry)
+AnnotationConfigUtils -> AnnotationConfigUtils: registerAnnotationConfigProcessors(registry, null)
+note left
+创建6个BD
+org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+org.springframework.context.annotation.internalAutowiredAnnotationProcessor
+org.springframework.context.annotation.internalCommonAnnotationProcessor
+org.springframework.context.annotation.internalPersistenceAnnotationProcessor
+org.springframework.context.event.internalEventListenerProcessor
+org.springframework.context.event.internalEventListenerFactory
+end note
+alt
+SpringApplication -> SpringApplication: prepareContext(context, environment, listeners, applicationArguments, printedBanner)
+note left
+manualSingletonNames,注入6个单例bean
+'autoConfigurationReport
+ContextIdApplicationContextInitializer$ContextId
+PropertyMappingContextCustomizer$PropertyMappingCheckBeanPostProcessor
+springApplicationArguments
+TestTypeExcludeFilter
+springBootLoggingSystem
+springBootBanner
+end note
+SpringApplication -> SpringApplication: load(context, sources.toArray(new Object[0]))
+SpringApplication -> SpringApplication: createBeanDefinitionLoader(getBeanDefinitionRegistry(context), sources)
+SpringApplication -> SpringApplication: applyInitializers(context)
+note left
+实例化几个initializer到容器中
+容器BPP:SharedMetadataReaderFactoryConditionContextInitializer$CachingMetadataReaderFactoryPostProcessor
+容器BPP:ConfigurationWaringsApplicationContextInitializar$ConfigurationWarningsPostProcessor
+end note
+SpringApplication -> SpringApplication: listeners.contextLoaded(context)
+note left:容器BPP ConfigFileApplicationListener$PropertySourceOrderingPostProcessor
+SpringApplication -> SpringApplication:  createBeanDefinitionLoader(getBeanDefinitionRegistry(context), sources)
+SpringApplication -> BeanDefinitionLoader: load()
+note left:注入启动资源类SourceCodeSpringApplication的BD
+end
+SpringApplication -> SpringApplication: refreshContext(context)
+note left
+autoConfiguration类都已经实例化到容器中了
+refreshContext()内容很丰富,单独拎出来讨论,实际上调用的是
+((AbstractApplicationContext) applicationContext).refresh()
+end note
+SpringApplication -> SpringApplication: afterRefresh(context, applicationArguments)
+
+@enduml

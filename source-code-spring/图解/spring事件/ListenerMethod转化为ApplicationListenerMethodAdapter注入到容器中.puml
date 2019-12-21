@@ -1,0 +1,62 @@
+@startuml
+Actor SpringApplication
+SpringApplication -> AbstractApplicationContext:refresh()
+AbstractApplicationContext -> AbstractApplicationContext:invokeBeanFactoryPostProcessors(beanFactory)
+note left
+构建BeanFactoryPostProcessors,头三个bean工厂后处理器:
+SharedMetadataReaderFactoryContextInitializer$CachingMetadataReaderFactoryPostProcessor
+ConfigurationWarningsApplicationContextInitializer$ConfigurationWarningsPostProcessor
+ConfigFileApplicationListener$PropertySourceOrderingPostProcessor
+end note
+
+'SharedMetadataReaderFactoryContextInitializer$CachingMetadataReaderFactoryPostProcessor做了以下两步操作
+'先是注册BD:org.springframework.boot.autoconfigure.internalCachingMetadataReaderFactory,
+'接着:org.springframework.context.annotation.internalConfigurationAnnotationProcessor添加属性metadataReaderFactory
+
+alt
+AbstractApplicationContext -> AbstractApplicationContext:getBeanFactoryPostProcessors()
+AbstractApplicationContext -> PostProcessorRegistrationDelegate:invokeBeanFactoryPostProcessors(beanFactory)
+PostProcessorRegistrationDelegate -> PostProcessorRegistrationDelegate:invokeBeanFactoryPostProcessors(nonOrderedPostProcessors, beanFactory)
+note left
+主角EventListenerMethodProcessor存在于nonOrderedPostProcessors
+优先级是所有BeanFactoryPostProcessor中最低的，即最后执行
+end note
+alt
+PostProcessorRegistrationDelegate -> EventListenerMethodProcessor:postProcessBeanFactory(beanFactory)
+EventListenerMethodProcessor -> DefaultListableBeanFactory:getBeansOfType(EventListenerFactory.class, false, false)
+note left
+创建TransactionalEventListenerFactory
+创建DefaultEventListenerFactory
+end note
+end
+end
+
+AbstractApplicationContext -> AbstractApplicationContext:registerBeanPostProcessors(beanFactory)
+AbstractApplicationContext -> AbstractApplicationContext:initMessageSource()
+AbstractApplicationContext -> AbstractApplicationContext:initApplicationEventMulticaster()
+AbstractApplicationContext -> AbstractApplicationContext:onRefresh()
+AbstractApplicationContext -> AbstractApplicationContext:registerListeners()
+AbstractApplicationContext -> AbstractApplicationContext:finishBeanFactoryInitialization(beanFactory)
+alt
+AbstractApplicationContext -> AbstractApplicationContext:finishBeanFactoryInitialization(beanFactory)
+AbstractApplicationContext -> DefaultListableBeanFactory:preInstantiateSingletons()
+note left
+完成单例bean的创建,包括@EventListener
+和@TransactionalEventListener注解所在的类
+循环遍历找到SmartInitializingSingleton的bean,
+调用smartSingleton.afterSingletonsInstantiated()
+end note
+DefaultListableBeanFactory -> EventListenerMethodProcessor:afterSingletonsInstantiated()
+EventListenerMethodProcessor -> EventListenerMethodProcessor:processBean(beanName, type)
+note left
+找到所有@EventListener注解的方法,@TransactionalEventListener也找出
+调用EventListenerFactory.createApplicationListener(beanName, targetType, methodToUse)
+@TransactionalEventListener创建ApplicationListenerMethodTransactionalAdapter
+@EventListener创建ApplicationListenerMethodAdapter
+交给容器管理context.addApplicationListener(applicationListener)
+ApplicationListenerMethodAdapter中包含的信息:beanName,targetMethod,condition,eventType
+end note
+end
+AbstractApplicationContext -> AbstractApplicationContext:finishRefresh()
+
+@enduml

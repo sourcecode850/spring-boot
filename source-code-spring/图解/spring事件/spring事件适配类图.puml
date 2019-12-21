@@ -1,0 +1,21 @@
+@startuml
+
+class ApplicationListenerMethodAdapter
+class ApplicationListenerMethodTransactionalAdapter
+class TransactionSynchronizationEventAdapter
+class TransactionSynchronizationAdapter
+interface GenericApplicationListener
+interface ApplicationListener
+interface TransactionSynchronization
+
+
+ApplicationListenerMethodAdapter <|-- ApplicationListenerMethodTransactionalAdapter
+TransactionSynchronizationAdapter <|-- TransactionSynchronizationEventAdapter
+ApplicationListener <|-- GenericApplicationListener
+GenericApplicationListener <|.. ApplicationListenerMethodAdapter
+TransactionSynchronization <|.down. TransactionSynchronizationAdapter
+ApplicationListenerMethodTransactionalAdapter <.. TransactionSynchronizationEventAdapter
+
+TransactionSynchronizationEventAdapter o-right- ApplicationListenerMethodAdapter
+
+@enduml
