@@ -1,0 +1,33 @@
+@startuml
+ConfigurationClassBeanDefinitionReader -> ConfigurationClassBeanDefinitionReader:loadBeanDefinitionsForConfigurationClass(configClass, trackedConditionEvaluator)
+note left
+此时用户自己的component和启动类已经注入到BD了,还没实例化；
+即configClass包含用户自己的component,启动类和autoConfigClass
+这些autoConfig有共同点,都是被启动类导入的,beanName一开始都是null
+下面的加载BD可以看到,是当所有component类已经加载到BD
+再去处理这些component上的其他注解或者@Bean方法的;
+猜想（正确）,我们自定义的component上的@Import导入的类,一开始也没注入到BDM,
+只是存在configClass,到这里统一去导入的吗?
+
+注意：我们自己的autoConfig类上,@Import注解导入的一般类,这个时候也已经存在于
+configClass中了,只不过还没在BDM;通过configClass.isImported()判断后加入BDM
+end note
+ConfigurationClassBeanDefinitionReader -> ConfigurationClassBeanDefinitionReader:registerBeanDefinitionForImportedConfigurationClass(configClass)
+note left
+configClass.isImported(),
+也就是被别人import导入的,执行此方法;这里放在METH-INF下的文件才会是isImported()
+即被启动类导入的;我们自己写的类,如果上面不加任务注解,而是通过@Import注解,也是isImported()
+Register the {@link Configuration} class itself as a bean definition
+end note
+ConfigurationClassBeanDefinitionReader -> ConfigurationClassBeanDefinitionReader:loadBeanDefinitionsForBeanMethod(beanMethod)
+note left
+将这个bd适配成工厂,工厂名是配置类名,工厂方法是当前@Bean注解所在的方法
+end note
+ConfigurationClassBeanDefinitionReader -> ConfigurationClassBeanDefinitionReader:loadBeanDefinitionsFromImportedResources(configClass.getImportedResources())
+ConfigurationClassBeanDefinitionReader -> ConfigurationClassBeanDefinitionReader:loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars())
+note left
+ImportBeanDefinitionRegistrar类，实际上就是执行方法
+registerBeanDefinitions(AnnotationMetadata, BeanDefinitionRegistry)
+然后ImportBeanDefinitionRegistrar类本身并不会注入到DBM中
+end note
+@enduml

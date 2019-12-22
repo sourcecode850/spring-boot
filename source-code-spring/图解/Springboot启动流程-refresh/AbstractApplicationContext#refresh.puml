@@ -1,0 +1,139 @@
+@startuml
+SpringApplication -> SpringApplication: run(String... args)
+alt
+SpringApplication -> SpringApplication: createApplicationContext()
+note left
+实例化AnnotationConfigApplicationContext
+实例化DefaultListableBeanFactory
+创建6个BD放在beanDefinitionMap中
+org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+org.springframework.context.annotation.internalAutowiredAnnotationProcessor
+org.springframework.context.annotation.internalCommonAnnotationProcessor
+org.springframework.context.annotation.internalPersistenceAnnotationProcessor
+org.springframework.context.event.internalEventListenerProcessor
+org.springframework.context.event.internalEventListenerFactory
+此时的beanFactory中除了这6个BD其他啥BD也没有
+另外beanDefinitionNames中保存这个6个BD的名字
+还有三个ignoredDependencyInterfaces
+org.springframework.beans.factory.BeanFactoryAware
+org.springframework.beans.factory.BeanNameAware
+org.springframework.beans.factory.BeanClassLoaderAware
+beanFactory其他的属性要么是null,要么size=0
+end note
+SpringApplication -> SpringApplication: getSpringFactoriesInstances(SpringBootExceptionReporter.class,new Class[] { ConfigurableApplicationContext.class }, context)
+note left
+添加手动单例autoConfigurationReport
+end note
+SpringApplication -> SpringApplication: prepareContext(context, environment, listeners, applicationArguments, printedBanner)
+note left
+添加6个manualSingleNames以及实例化
+ContextIdApplicationContextInitializer$ContextId
+PropertyMappingContextCustomizer$PropertyMappingCheckBeanPostProcessor
+springApplicationArguments
+TestTypeExcludeFilter
+springBootLoggingSystem
+springBootBanner
+这些手动单例bean,并没有BD信息
+end note
+SpringApplication -> SpringApplication: refreshContext(context)
+end
+SpringApplication -> SpringApplication: refresh(context)
+SpringApplication -> AbstractApplicationContext: refresh()
+AbstractApplicationContext -> AbstractApplicationContext: prepareRefresh()
+note left:初始化earlyApplicationEvents集合
+AbstractApplicationContext -> AbstractApplicationContext: prepareBeanFactory(beanFactory)
+note left
+(1)Tell the internal bean factory to use the context's class loader etc
+(2)Configure the bean factory with context callbacks
+BPP:ApplicationContextAwareProcessor,完成各种aware接口的set方法
+ignoreDependencyInterface
+registerResolvableDependency
+BPP:ApplicationListenerDetector
+从context中拿到并保存environment实例
+从environment中拿到并保存systemProperties
+从environment中拿到并保存systemEnvironment
+end note
+AbstractApplicationContext -> AbstractApplicationContext: postProcessBeanFactory(beanFactory)
+note left:啥也没干
+alt
+AbstractApplicationContext -> AbstractApplicationContext: invokeBeanFactoryPostProcessors(beanFactory)
+note left
+处理上下文中已有的三个BPP
+SharedMetadataReaderFactoryContextInitializer$CachingMetadataReaderFactoryPostProcessor
+ConfigurationWarningsApplicationContextInitializer$ConfigurationWarningsPostProcessor
+ConfigFileApplicationListener$PropertySourceOrderingPostProcessor
+找到org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+处理已有的10个BD,其中只有启动类SourceCodeSpringApplication是需要处理的
+end note
+AbstractApplicationContext -> PostProcessorRegistrationDelegate: invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors())
+PostProcessorRegistrationDelegate -> PostProcessorRegistrationDelegate: invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry)
+PostProcessorRegistrationDelegate -> ConfigurationClassPostProcessor: postProcessBeanDefinitionRegistry(registry)
+PostProcessorRegistrationDelegate -> ConfigurationClassPostProcessor: processConfigBeanDefinitions(registry)
+ConfigurationClassPostProcessor -> ConfigurationClassParser: new ConfigurationClassParser(...)
+ConfigurationClassPostProcessor -> ConfigurationClassParser: parse(candidates)
+note left
+处理已有的10个BD,其中只有启动类SourceCodeSpringApplication是需要处理的
+处理完启动类,所有autoConfiguration类也被解析到configurationClasses属性
+BDnamesList中还是没有的
+end note
+alt
+ConfigurationClassParser -> ConfigurationClassParser: processConfigurationClass(new ConfigurationClass(metadata, beanName))
+note left:解析完启动类,保存到ConfigurationClassParser#configurationClasses
+ConfigurationClassParser -> ConfigurationClassParser: doProcessConfigurationClass(configClass, sourceClass)
+note left
+完成启动类的解析
+Recursively process any member (nested) classes first
+Process any @PropertySource annotations
+Process any @ComponentScan annotations:用户自己的@Component类
+Process any @Import annotations
+Process any @ImportResource annotations
+Process individual @Bean methods,只是保存到beansMethod中,还没到BD
+Process default methods on interfaces
+Process superclass, if any
+end note
+ConfigurationClassParser -> ConfigurationClassParser: processImports(configClass, sourceClass, getImports(sourceClass), true)
+note left
+重点分析 @Import
+    AutoConfigurationPackages.Registrar
+    AutoConfigurationImportSelector
+遍历importCandidates,就上面两个
+实例化BeanUtils.instantiateClass(candidateClass, ImportSelector.class)
+调用其aware接口的set方法
+end note
+
+ConfigurationClassParser -> ComponentScanAnnotationParser: parse(componentScan, sourceClass.getMetadata().getClassName())
+ComponentScanAnnotationParser -> ClassPathBeanDefinitionScanner: new ClassPathBeanDefinitionScanner(...)
+ComponentScanAnnotationParser -> ComponentScanAnnotationParser: basePackages.add(ClassUtils.getPackageName(declaringClass))
+ComponentScanAnnotationParser -> ClassPathBeanDefinitionScanner: doScan(StringUtils.toStringArray(basePackages))
+note left
+如果没有设置basePackages和basePackageClasses
+取启动类SourceCodeSpringApplication所在的包
+end note
+ClassPathBeanDefinitionScanner -> ClassPathBeanDefinitionScanner: registerBeanDefinition(definitionHolder, this.registry)
+end
+ConfigurationClassParser -> ConfigurationClassParser: this.deferredImportSelectorHandler.process()
+ConfigurationClassParser -> DeferredImportSelectorHandler: process()
+DeferredImportSelectorHandler -> AutoConfigurationImportSelector: process(...)
+AutoConfigurationImportSelector -> AutoConfigurationImportSelector: META-INF/spring-autoconfigure-metadata.properties
+note left:获取所有的自动配置类
+AutoConfigurationImportSelector -> AutoConfigurationImportSelector: getAutoConfigurationEntry()
+note left
+去掉重复以及exclude,filter的自动配置类；688->20个了
+发布事件fireAutoConfigurationImportEvents
+end note
+DeferredImportSelectorHandler -> AutoConfigurationImportSelector: selectImports()
+ConfigurationClassPostProcessor -> ConfigurationClassBeanDefinitionReader:loadBeanDefinitions(configClasses)
+note left
+包括自己的component和启动类,以及autoConfig类
+具体详情见：refresh-invokeBeanFactoryPostProcessors-loanBeanDefinitons
+end note
+end
+
+AbstractApplicationContext -> AbstractApplicationContext: registerBeanPostProcessors(beanFactory)
+AbstractApplicationContext -> AbstractApplicationContext: initMessageSource()
+AbstractApplicationContext -> AbstractApplicationContext: initApplicationEventMulticaster()
+AbstractApplicationContext -> AbstractApplicationContext: onRefresh()
+AbstractApplicationContext -> AbstractApplicationContext: registerListeners()
+AbstractApplicationContext -> AbstractApplicationContext: finishBeanFactoryInitialization(beanFactory)
+AbstractApplicationContext -> AbstractApplicationContext: finishRefresh()
+@enduml
