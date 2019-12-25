@@ -15,7 +15,7 @@ public class MyDeferredImportSelector implements DeferredImportSelector {
     @Override
     public String[] selectImports(AnnotationMetadata importingClassMetadata) {
         System.out.println("MyDeferredImportSelector-------------------");
-        return new String[0];
+        return new String[]{MyDeferredImport1.class.getName()};
     }
 
 }

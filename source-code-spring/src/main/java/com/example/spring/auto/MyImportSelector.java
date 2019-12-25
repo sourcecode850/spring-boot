@@ -14,6 +14,6 @@ public class MyImportSelector implements ImportSelector {
     @Override
     public String[] selectImports(AnnotationMetadata importingClassMetadata) {
         System.out.println("MyImportSelector--------------------------importingClassMetadata");
-        return new String[0];
+        return new String[]{MyImport1.class.getName()};
     }
 }
