@@ -30,6 +30,7 @@ public class EventAndJpaTest {
         UserEntity userEntity = new UserEntity(1, null, null);
         userEntity.changeState("jpa-张三", userEntity.getGender());
         userRepository.save(userEntity);
+        userRepository.save(userEntity);
     }
 
     @Autowired

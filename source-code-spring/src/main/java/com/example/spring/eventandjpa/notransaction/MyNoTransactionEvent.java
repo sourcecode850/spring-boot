@@ -9,10 +9,12 @@ import lombok.NoArgsConstructor;
  **/
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
 public class MyNoTransactionEvent {
 
     private String name;
     private String gender;
 
+    public MyNoTransactionEvent(){
+        System.out.println("MyNoTransactionEvent");
+    }
 }

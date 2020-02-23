@@ -24,5 +24,9 @@ public class UserDomainEventListener {
         System.out.println("收到userDomainEvent事件2：" + userDomainEvent);
     }
 
+    public UserDomainEventListener() {
+        // debug 切面的实例化以及切面是如何创建成代理的分析
+        System.out.println("UserDomainEventListener-------------构造器");
+    }
 
 }
